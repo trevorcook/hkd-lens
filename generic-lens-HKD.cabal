@@ -1,0 +1,29 @@
+cabal-version:       2.0
+
+name:                generic-lens-HKD
+version:             0.0.0.0
+synopsis:            Generic lenses/prisms/traversals for/in higher kinded data.
+-- description:
+homepage:            https://github.com/trevorcook/generic-lens-HKD
+-- bug-reports:
+license:             BSD3
+license-file:        LICENSE
+author:              Trevor Cook
+maintainer:          trevor.j.cook@gmail.com
+-- copyright:
+category:            Data
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+library
+  exposed-modules:     Traversal
+  -- other-modules:
+
+  other-extensions:    TypeFamilies, TypeOperators, AllowAmbiguousTypes,
+    UndecidableInstances, TypeApplications, ScopedTypeVariables, PolyKinds,
+    RankNTypes, TypeInType, FunctionalDependencies, TypeFamilyDependencies
+
+  build-depends:       base ^>=4.12.0.0
+
+  hs-source-dirs:      src
+
+  default-language:    Haskell2010
