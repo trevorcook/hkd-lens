@@ -1,7 +1,7 @@
 # generic-lens-HKD
 
-A library for creating lenses/prisms/traversals for higher kinded data (HKD)
-following the method detailed by Sandy Macguire 
+A library for creating traversals for higher kinded data (HKD)
+following the method detailed by Sandy Maguire 
 (http://reasonablypolymorphic.com/blog/higher-kinded-data). It expands
 on the methodology given there by including data with multiple
 constructors and by allowing type-changing traversals, ```Traverse s t a b```. 
