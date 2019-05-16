@@ -10,9 +10,47 @@ This library currently supplies only traversals, though the methodology
 will be expanded to derive lenses and prisms as well. However, the 
 methodology only allows traversals which target a single specific location 
 in a data structure. This is an inherent feature of the method and will 
-not change. Consult the package "generic-lens" for that capability.
+not change. Consult the package "generic-lens" for generic ways of targeting
+multiple locations.
 
-## A Simple Example
+## Quick Start
+```haskell
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeAnnotations #-}
+{-# LANGUAGE TypeAnnotations #-}
+{-# LANGUAGE DeriveGeneric  #-}
+
+import Generics.OneLiner --package one-liner
+import Control.Lens      --package lens
+import HKD.Traversal
+
+type AB = AB' HK0
+data AB' f a b = A { a_A :: HK f a, num_A :: HK f Int }
+               | B { bs_B :: HK f [b] }
+              deriving Generic
+deriving instance (Constraints (AB' f a b) Show) => Show (AB' f a b)
+
+abs :: [AB String Int]
+abs = [ A "1" 1
+      , B [0,1,2] ]
+abs' :: [ (AB Int Int, AB String Int, AB String String) ]
+abs' = foo abs
+--   = [ (A 1 1, A "1" 10, A "1" 1)
+--     , (B [0,1,2], B [0,1,2], B ["0","1","2"]) ]
+
+foo :: [AB String Int] -> [ (AB Int Int, AB String Int, AB String String) ]
+foo = map $ \ab -> ( ab & trav_a_A %~ read
+                   , ab & trav_num_A %~ (*10) 
+                   , ab & trav_bs_B %~ map show )
+  where
+    tA, tB :: MakeTraversal (AB a b) (AB c d) 1
+    tA@A{ a_A = (TraverseForN trav_a_A)
+        , num_a = (TraverseForN trav_num_a) } = makeTraversal @"A"
+    tB@B{ bs_B = (TraverseForN trav_bs_B) } = makeTraversal @"B"
+
+```
+
+## A Simple Example Explained
 ### Higher Kinded Data
 The Higher Kinded Data we'll be working with follows the pattern of ```C'```, below. 
 
