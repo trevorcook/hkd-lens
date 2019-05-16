@@ -1,14 +1,16 @@
 # generic-lens-HKD
 
-A library for creating Free Traversals a la Sandy Macguire HKD,
+A library for creating lenses/prisms/traversals for higher kinded data (HKD)
+following the method detailed by Sandy Macguire 
 (http://reasonablypolymorphic.com/blog/higher-kinded-data). It expands
-on the methodology given there by including sum types and by allowing type-
-changing traversals, ```Traverse s t a b```. 
+on the methodology given there by including data with multiple
+constructors and by allowing type-changing traversals, ```Traverse s t a b```. 
 
 This library currently supplies only traversals, though the methodology
-could be expanded to deliver tighter types: lenses, prisms, or traversals--
-depending on use case. However, the methodology only allows traversals 
-which target a single specific location in a data structure. 
+will be expanded to derive lenses and prisms as well. However, the 
+methodology only allows traversals which target a single specific location 
+in a data structure. This is an inherent feature of the method and will 
+not change. Consult the package "generic-lens" for that capability.
 
 ## A Simple Example
 ### Higher Kinded Data
@@ -19,8 +21,8 @@ data C' f a = C1 { c1_a :: HK f a } deriving Generic
 ```
 
 Each HKD, such as ```C'```, is parmeterized by a control type, ```f``` in this case,
-that works in conjunction with a type family, ```HK```, to control the expression of sub-data, 
-the data at ```c1_a```
+that works in conjunction with a type family, ```HK```, to control the expression of 
+sub-data, the data at ```c1_a```.
 
 ```haskell
 {-# LANGUAGE TypeFamilies #-}
@@ -37,9 +39,9 @@ And we might generally define a type allias such as:
 type C = C' HK0
 ```
 to ease our minds when working with the basic higher kinded form of a data type. 
-That is, ```C' HK0``` leaves us with something analogous to:
+That is, ```C' HK0``` makes it as if we had defined:
 ```haskell
--- data C' HK0 = C1 { c1_a :: a }
+data C = C1 { c1_a :: a }
 ```
 #### Standalone Deriving for HKD
 Note, that the "one-liner" package (possibly "barbies" also) can be used to make
@@ -65,52 +67,61 @@ The traversal form of ```C'```, ```C' (TraverseForN (C a) (C b))``` is the form 
 holds traversals of the ```C' HK0``` structure. Something analogous to the below:
 
 ```haskell
--- C' (TraverseForN (C a) (C b)) = C1 {c1_a :: Traversal (C a) (C b) a b}
+-- C' (TraverseForN (C a) (C b)) = C1 {c1_a :: Traversal (C a) (C b) a b }
 ```
+In other words, every point in a traversal kinded data holds a traversal between
+the basic form of that data and the same point in the basic data at which the
+traversal is stored.
 
 #### Generating Traversal Kinded Data
 
-The traversal kinded data is made by calling ```makeTraversal @c @o```, where ```c```
-is the symbol of the constructor targeted (or any symbol if non-Sum
-type) and ```o``` is the data with traversals at it's points. (the ```@Type``` is 
-enabled with  ```{-# Language TypeAnnotations #-}```).
+The traversal kinded data is made by calling ```makeTraversal @c```, where ```c```
+is the symbol of the constructor targeted (or any symbol for single constructor
+types). (Note, the ```@Type``` syntax is enabled with
+```{-# Language TypeAnnotations #-}```). 
+
+The type for the traversal kinded data is derived with the ```MakeTraverseFor``` type family. 
+It takes a source type, target type, and a ```Nat``` pointing to the HK control parameter
+(counting parameters left to right, starting at 1). Note that for complicated data
+structures not all type parameters may be able to change their type, this is explained
+in the Valid Traversals section of this document.
 
 ```haskell
+{-# LANGUAGE TypeAnnotations #-}
 {-# LANGUAGE TypeFamilies #-}
-import Control.Lens
+import Control.Lens((.~),(&))
 
--- The Traversal (NProxy0 explained below)
-tC :: C' (TraverseForN (C a) (C a')) (NProxy0 2)
+-- Generate the traversal
+tC :: MakeTraverseFor (C a) (C b) 1
 tC = makeTraversal @""
 
--- A data
+-- Define some data to traverse
 c1 :: C Int 
 c1 = C1 1
 
--- An application of that data (Using Control.Lens from "lens")
+-- An application of the traversal
 c2 = C String
 c2 = c1 & getTraverseForN (c1_a tC) .~ "a" -- Yields C1 "a"
 ```
 
-#### NProxyK
+#### The Traversal Kinded Data/NProxyK
 
-The ```TraverseForN s t``` uses proxies for type level natural numbers in the place of its parameters.
-This allows generic traversals to be derived, and the appropriate traversal types calculated. Each 
-parameter (other than the HK control) must be appropriately numbered. With an appropriately kinded proxy,
-i.e ```NProxy0 1``` for the first parameter of kind ```*```, ```NProxy2 1``` for the first parameter, which
-has the kind, ```k0 -> k1 -> *```. There are ```NProxyK```s defined for K = 0 to 7.
-
-#### MakeTraverseFor
-
-To ensure the proper type is formulated, ```MakeTraverseFor``` may be used. It takes a source 
-type, target type, and a ```Nat``` pointing to the HK control parameter (counting parameters 
-left to right, starting at 1)
+For the sake of exposition, it may be helpful to know that 
+```MakeTraverseFor (C a) (C b) 1``` resolves to ``` C' (TraverseForN (C a) (C b)) (NProxy0 2)```.
+And so, the following definition is the same as ```tC```.
 
 ```haskell
--- This resolves to the same traversal as tC
-tC' :: MakeTraverseFor (C a) (C a') 1
+tC' :: C' (TraverseForN (C a) (C b)) (NProxy0 2)
 tC' = makeTraversal @""
 ```
+
+The traversal kind uses proxies for type level natural numbers, ```Nat```, for its type parameters.
+This allows the appropriate traversal type to be calculated at the various places within the HKD,
+and for generic traversals to be derived. Each parameter (other than the HK control) must be 
+appropriately numbered with an appropriately-kinded proxy. For example
+```NProxy0 1``` would be used in the place of the first parameter if it had a kind ```*```,
+but ```NProxy2 1``` would be used for the first parameter with kind, ```k0 -> k1 -> *```. There are
+```NProxyK```s defined for K = 0 to 7.
 
 ## A Full Example
 
@@ -125,8 +136,8 @@ data D' f g a b c = D1 { d1_a      :: HK f (g (Int, a))
                        , d2_c :: HK f c }
                   | D3 { d3_c :: HK f c }
                   deriving (Generic)
-deriving instance (Constraints (D' f a b c) Show) =>
-  Show (D' f a b c)
+deriving instance (Constraints (D' f g a b c) Show) =>
+  Show (D' f g a b c)
 
 -- Example Data
 d1, d2, d3 :: D [] Int Int Int
@@ -139,14 +150,23 @@ tD1 :: D' (TraverseForN (D g a b c) (D g' a' b' c))
               (NProxy1 2) (NProxy0 3) (NProxy0 4) (NProxy0 5)
 tD1 = makeTraversal @"D1"
 ```
-Note that ```tD1``` has the form:
+Note that ```tD1``` has a form analogous to:
 ```haskell
--- D1 { d1_a :: Traversal (D g a b c) (D g' a' b' c) a a'
-      , d1_String :: Traversal (D g a b c) (D g a b c) String String }
+D1 { d1_a :: Traversal (D g a b c) (D g' a' b c) (g (Int, a)) (g' (Int,a'))
+   , d1_String :: Traversal (D g a b c) (D g a b c) String String }
 ```
+Its a ```D1``` constructor with two traversals. Note that the
+two traversals do not match exaclty the types specified in the 
+traversal type, ```D' (TraverseForN ...) ...```. Rather, the data types
+specified in the traversal type serve as lower and upper bounds for
+the types that may be traversed at every point. The traversal at ```d1_a```
+involves the ```g``` and ```a``` type parameters, and so the traversal is between 
+two forms of ```D'``` that (may) change those parameters. Similarly, the 
+traversal at ```d1_String``` does not involve any type parmeters and so 
+it is a non-type changing traversal. 
 
-Traversals nested in the other constructors are made below using ```MakeTraverseFor```, 
-but resolve to the same type as tD1
+Traversals nested in the other constructors are made using ```MakeTraverseFor```, 
+but resolve to the same type as tD1.
 
 ```haskell
 tD2 , tD3 :: MakeTraverseFor (D g a b c) (D g' a' b' c) 1
@@ -168,67 +188,54 @@ d1' = c1 ^? getTraverseForN (d2_b tD2)
 ```
 
 ###  VALID TRAVERSALS
-In the above "D" traversals, 'c' remains unchanged. We actually
-cannot create a valid traversal if 'c' changes because it is mentioned in
-two different constructors.
+In the above ```D``` traversals, the type variable ```c``` remains unchanged.
+We actually cannot create a valid traversal if ```c``` changes because it is 
+mentioned in two different constructors: ```D2``` and ```D3```.
 
-Imagine we were to target one constructor, "D3", but were given the other construction, 
-"D2". The ".~"  operation would have to return the value unchanged but with a changed type. 
-Not good!
+Why? Imagine we were to target one constructor, ```D3```, but were given the 
+other construction, ```D2```, as in:
+
+```haskell
+... = (D3 1) & getTraverseForN (d2_c tD2') .~ "string for d2_c" 
+```
+
+The traversal ```(d2_c tD2')``` misses its target, and so the  ```.~```
+operation is supposed to return the supplied value unchanged. However
+the traversal we are asking for promises that we can change ```c``` to 
+a ```String```--we can't. 
 
 A similar invalid situation arises in constructors with two
 or more mentions of a type variable. Targeting one will require the type of
-the collection to change, but only one can be changed, so thats bad. In
-any case, trying to make a traversal with one of these will be an instance
-not found failure.
+all instances in the constructor to change--but only one will be changed.
+In any case, trying to make such a traversal kind will be a compile
+time error.
 
 ```haskell
-tDat2wrong, tDat3wrong :: MakeTraverseFor (Dat a b c) (Dat a' b' c') 1
-tDat2wrong = makeTraversal @"D2" --error
-tDat3wrong = makeTraversal @"D3" --error
+tD2_wrong, tDat3wrong :: MakeTraverseFor (D g a b c) (D g' a' b' c') 1
+tD2_wrong = makeTraversal @"D2" --error (Instance not Found)
+tD3_wrong = makeTraversal @"D3" --error (Instance not Found)
 ```
 
-Traversals can be made that target multiple/all instances of a type variable
-see generic-lens for a good solution to that problem.
+Traversals can be made that target multiple/all instances of a type variable,
+of course--just not with this library. The "generic-lens" package provides 
+a solution to that problem.
+
 Incidentally, we can make the traversal for the first constructor:
 
 ```haskell
-tDat1ProbablyShouldn't :: MakeTraverseFor (Dat a b c) (Dat a' b' c') 1
-tDat1ProbablyShouldn't = makeTraversal @"D1"
+tD1_ProbablyShouldn't :: MakeTraverseFor (D g a b c) (D g a' b' c') 1
+tD1_ProbablyShouldn't = makeTraversal @"D1"
 ```
 
 This works because we are actually only checking for a valid traversal of
-the first parameter. An inspection of the Traversal kinded type should
+the first parameter. An inspection of the traversal kinded type should
 be helpful.
+
 ```haskell
 t = D1
    { d1_a :: TraverseForN {
-          getTraverseForN :: Traversal (Dat a b c) (Dat a' b c) a a' }
+          getTraverseForN :: Traversal (D g a b c) (D g' a' b c) (g (Int, a)) (g' (Int,a')) }
    , d1_String :: TraverseForN {
           getTraverseForN :: Traversal (Dat a b c) (Dat a b c) String String }
    }
-
-
--- This system also works some higher kinded parameters, namely:
---    *, k1 -> *, k1 -> k2 -> *, k1 -> ... -> k7 -> *.
--- However, for the type family to work, and the instances to resolve, the kind
--- of each parameter may have to be specified, as below.
-type H = H' HK0
-data H' f (a :: *) (g :: * -> *) w = H { getH :: HK f (w (g Int) a) }
- deriving Generic
-deriving instance (Constraints (H' f a g w) Show) =>
-  Show (H' f a g w)
-tH :: MakeTraverseFor (H a g w) (H a' g' w') 1
-tH = makeTraversal @"H"
--- and an example application
-anAppOfHT = h1 & getTraverseForN (getH tH) %~ fh
-  where
-    -- h1 :: H Int Maybe Either
-    h1 = H (Left (Just 1))
-    -- hl :: Maybe Int -> [Int]
-    hl = maybe [] pure
-    -- hr :: Int -> String
-    hr = show
-    fh :: Either (Maybe Int) Int -> ([Int],String)
-fh = either ((,"WasLeft") . hl) (([],) . hr)
 ```
