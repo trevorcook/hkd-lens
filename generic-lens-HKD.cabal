@@ -2,7 +2,7 @@ cabal-version:       2.0
 
 name:                generic-lens-HKD
 version:             0.0.0.0
-synopsis:            Generic lenses/prisms/traversals for/in higher kinded data.
+synopsis:            Generic lenses/prisms/traversals kinded data.
 -- description:
 homepage:            https://github.com/trevorcook/generic-lens-HKD
 -- bug-reports:
@@ -15,14 +15,16 @@ category:            Data
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
 library
-  exposed-modules:     Traversal
+  exposed-modules:     HKD.Traversal
   -- other-modules:
 
   other-extensions:    TypeFamilies, TypeOperators, AllowAmbiguousTypes,
     UndecidableInstances, TypeApplications, ScopedTypeVariables, PolyKinds,
-    RankNTypes, TypeInType, FunctionalDependencies, TypeFamilyDependencies
+    RankNTypes, TypeInType, FunctionalDependencies, TypeFamilyDependencies,
+    FlexibleInstances
 
-  build-depends:       base ^>=4.12.0.0
+  build-depends:       base ^>=4.12.0.0, lens
+
 
   hs-source-dirs:      src
 
