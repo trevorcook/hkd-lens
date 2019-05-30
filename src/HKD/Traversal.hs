@@ -1,18 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs #-}
 module HKD.Traversal
   ( TraverseForN(..)
   , MakeTraverseFor
@@ -26,8 +11,6 @@ import GHC.TypeLits hiding ( (*) )
 import Data.Kind
 import Data.Functor.Const
 
-
-data PxK (a::k) (b::j)
 
 -- Cutail Lens dependency
 type Traversal s t a b = forall f . Applicative f => (a -> f b) -> s -> f t

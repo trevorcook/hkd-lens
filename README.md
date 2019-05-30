@@ -1,4 +1,4 @@
-# generic-lens-HKD
+# hkd-lens
 
 A library for creating traversals for higher kinded data (HKD)
 following the method detailed by Sandy Maguire
@@ -32,31 +32,43 @@ import HKD.Traversal
 import GHC.TypeLits
 import GHC.Generics(Generic)
 
--- Higher Kind 0, used for "Un" higher kinding.
-data HK0 a
-type family HK (f :: ( * -> * ) ) a where
-  HK HK0 a = a
-  HK f   a = f a
-
-type AB = AB' HK0
+-- Declare a higher kinded data.
 data AB' f a b = A { a_A :: HK f a, num_A :: HK f Int }
                | B { bs_B :: HK f [b] }
               deriving Generic
 deriving instance (Constraints (AB' f a b) Show) => Show (AB' f a b)
 
+-- Our AB' data uses the type family to determine its expression
+-- based on `f`
+type family HK (f :: ( * -> * ) ) a where
+  HK HK0 a = a
+  HK f   a = f a
+-- Higher Kind 0, used for "Un" higher kinding.
+data HK0 a
+-- Lets us have a nice synonym for basic AB data.
+type AB = AB' HK0
+
+-- define some AB
 thisABs :: [AB String Int]
 thisABs = [ A "1" 1
           , B [0,1,2] ]
+-- Apply some traversals to our data
 thisABs' :: [ (AB Int Int, AB String Int, AB String String) ]
-thisABs' = foo thisABs
+thisABs' = map foo thisABs
+-- Results in:
 --   = [ (A 1 1, A "1" 10, A "1" 1)
 --     , (B [0,1,2], B [0,1,2], B ["0","1","2"]) ]
 
-foo :: [AB String Int] -> [ (AB Int Int, AB String Int, AB String String) ]
-foo = map $ \ab -> ( ab & getTraverseForN (a_A tA) %~ read
-                   , ab & getTraverseForN (num_A tA) %~ (*10)
-                   , ab & getTraverseForN (bs_B tB) %~ map show )
+-- Here's the function using the traversal
+foo :: AB String Int-> (AB Int Int, AB String Int, AB String String)
+foo ab = ( ab & getTraverseForN (a_A tA) %~ read
+         , ab & getTraverseForN (num_A tA) %~ (*10)
+         , ab & getTraverseForN (bs_B tB) %~ map show )
+--                     ^          ^   ^- The traversal-kinded-data
+--                     |          |----- The record field
+--                     |---------------- Unwrap the Traverse newtype wrapper.           
 
+-- Generate AB' structures with traversal at their HK points.
 tA, tB :: MakeTraverseFor (AB a b) (AB c d) 1
 tA = makeTraversal @"A"
 tB = makeTraversal @"B"

@@ -2,5 +2,5 @@ let
   pkgs = import <nixpkgs> { };
 
 in
-  { generic-lens-HKD = pkgs.haskellPackages.callPackage ./generic-lens-HKD.nix { };
+  { hkd-lens = pkgs.haskellPackages.callPackage ./hkd-lens.nix { };
   }

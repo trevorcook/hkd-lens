@@ -1,1 +1,1 @@
-(import ./release2.nix).generic-lens-HKD.env
+(import ./release2.nix).hkd-lens.env

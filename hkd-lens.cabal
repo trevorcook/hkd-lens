@@ -1,32 +1,29 @@
 cabal-version:       2.0
 
-name:                generic-lens-HKD
-version:             0.0.0.0
-synopsis:            Generic lenses/prisms/traversals kinded data.
+name:                hkd-lens
+version:             0.0.0.1
+synopsis:            Generic lens/prism/traversal-kinded data.
 -- description:
-homepage:            https://github.com/trevorcook/generic-lens-HKD
+homepage:            https://github.com/trevorcook/hkd-lens
 -- bug-reports:
 license:             BSD3
 license-file:        LICENSE
 author:              Trevor Cook
 maintainer:          trevor.j.cook@gmail.com
--- copyright:
+copyright:           Trevor Cook
 category:            Data
 build-type:          Simple
-extra-source-files:  CHANGELOG.md
+extra-source-files:  CHANGELOG.md, README.md
 library
   exposed-modules:     HKD.Traversal
-                       -- , Test
   -- other-modules:
 
-  other-extensions:    TypeFamilies, TypeOperators, AllowAmbiguousTypes,
+  default-extensions:    TypeFamilies, TypeOperators, AllowAmbiguousTypes,
     UndecidableInstances, TypeApplications, ScopedTypeVariables, PolyKinds,
     RankNTypes, TypeInType, FunctionalDependencies, TypeFamilyDependencies,
     FlexibleInstances
 
   build-depends:       base ^>=4.12.0.0
-                     -- , lens
-                     -- , one-liner
 
 
   hs-source-dirs:      src
