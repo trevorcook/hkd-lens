@@ -1,10 +1,10 @@
-{ mkDerivation, base, stdenv }:
+{ mkDerivation, base, lens, one-liner, stdenv }:
 mkDerivation {
   pname = "hkd-lens";
-  version = "0.0.0.0";
+  version = "0.0.1";
   src = ./.;
-  libraryHaskellDepends = [ base ];
+  libraryHaskellDepends = [ base lens one-liner ];
   homepage = "https://github.com/trevorcook/hkd-lens";
-  description = "Generic lense/prism/traversal-kinded data";
+  description = "Generic lens/prism/traversal-kinded data";
   license = stdenv.lib.licenses.bsd3;
 }
