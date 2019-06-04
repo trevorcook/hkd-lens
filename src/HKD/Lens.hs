@@ -1,19 +1,36 @@
 module HKD.Lens
-  ( TraversalsOf
-  , makeTraversalsOf
-  , TraversalOf(..)
-  , LensesOf
-  , makeLensesOf
-  , LensOf(..)
-  , PrismsOf
-  , makePrismsOf
+  (
+    -- * Lens Wrappers
+    --
+    -- $lensWrappers
+    LensOf(..)
   , PrismOf(..)
-  , NProxyK (..)
+  , TraversalOf(..)
+
+  -- * Type of Lens Kinded Data
+  --
+  -- $lensKindedData
+  , LensesOf
+  , PrismsOf
+  , TraversalsOf
+
+  -- * Making Lens Kinded Data
+  --
+  -- $makeLensKindedData
+  , makeTraversalsOf
+  , makeLensesOf
+  , makePrismsOf
+
+  -- * NProxyK
+  --
+  -- $nProxyK
   , ToNProxyK
+  , NProxyK (..)
   ) where
 
 import GHC.Generics
 import GHC.TypeLits hiding ( (*) )
+import Data.Type.Bool
 import Data.Kind
 import Data.Functor.Const
 import Data.Profunctor
@@ -30,11 +47,23 @@ iso into outof = dimap into (fmap outof)
 prism :: (b -> t) -> (s -> Either t a) -> Prism s t a b
 prism mk e = dimap e (either pure (fmap mk)) . right'
 
--- TraversForN s t n:
--- Holds a traversal for some subset of changes, 'n', between 's' and 't'
+
+-- $lensWrappers
+--
+-- 'LensOf', 'PrismOf', and 'TraversalOf' wrap lenses, prisms, and traversals.
+-- 'LensOf s t n', for instance, wrapps some 'lens s s\' a b', with 's\'', 'a',
+-- and 'b', determined by 's', 't', and 'n'.
+newtype LensOf s t n = LensOf
+  { getLensOf ::
+      Lens s                   (SubSub s t n)
+                (GetNProxyFrom s n) (GetNProxyFrom t n)}
 newtype TraversalOf s t n = TraversalOf
   { getTraversalOf ::
       Traversal s                   (SubSub s t n)
+                (GetNProxyFrom s n) (GetNProxyFrom t n)}
+newtype PrismOf s t n = PrismOf
+  { getPrismOf ::
+      Prism s                   (SubSub s t n)
                 (GetNProxyFrom s n) (GetNProxyFrom t n)}
 -- SubSub s t n: changes s to some type s' with a mixture of variables from
 -- s and t, determined by n.
@@ -48,9 +77,13 @@ newtype TraversalOf s t n = TraversalOf
 -- will be between 's' and some type 's2'--that may or may not be 't'. 't' acts
 -- as a sort of "upper bound" on the type 's2' may take.
 
-
+-- $makeLensKindedData
+--
+-- Lens Kinded Data, or higher kinded data parameterized such that data fields
+-- are populated with lenses, are made with 'makeLensesOf', 'makePrismsOf', and
+-- 'makeTraversalOf'
 makeTraversalsOf :: forall c o s t i .
-              ( SubstituteLensParam o s ~ i
+              ( MakeLowerKinded o s ~ i
               , GetSourceAndTarget o ~ (s,t)
               , Generic o, Generic s, Generic t, Generic i
               , GLensLike End c (TraversalOf s t) (Rep i) (Rep o)
@@ -58,24 +91,16 @@ makeTraversalsOf :: forall c o s t i .
 makeTraversalsOf = to $ gLensLike @End @c @(TraversalOf s t) @(Rep i) @(Rep o)
 
 
-newtype LensOf s t n = LensOf
-  { getLensOf ::
-      Lens s                   (SubSub s t n)
-                (GetNProxyFrom s n) (GetNProxyFrom t n)}
 makeLensesOf :: forall o s t i .
-              ( SubstituteLensParam o s ~ i
+              ( MakeLowerKinded o s ~ i
               , GetSourceAndTarget o ~ (s,t)
               , Generic o, Generic s, Generic t, Generic i
               , GLensLike End "" (LensOf s t) (Rep i) (Rep o)
               ) => o
 makeLensesOf = to $ gLensLike @End @"" @(LensOf s t) @(Rep i) @(Rep o)
 
-newtype PrismOf s t n = PrismOf
-  { getPrismOf ::
-      Prism s                   (SubSub s t n)
-                (GetNProxyFrom s n) (GetNProxyFrom t n)}
 makePrismsOf :: forall c o s t i .
-              ( SubstituteLensParam o s ~ i
+              ( MakeLowerKinded o s ~ i
               , GetSourceAndTarget o ~ (s,t)
               , Generic o, Generic s, Generic t, Generic i
               , GLensLike End c (PrismOf s t) (Rep i) (Rep o)
@@ -83,28 +108,28 @@ makePrismsOf :: forall c o s t i .
 makePrismsOf = to $ gLensLike @End @c @(PrismOf s t) @(Rep i) @(Rep o)
 
 
--- type family LookupN (x :: k) :: Maybe Nat where
---   LookupN (NProxyK n a) = Just n
---   LookupN x             = Nothing
+-- $nProxyK
+--
+-- 'NProxyK' is a multi-kinded data family that allows 'Nat's to be used in
+-- place of types of any arity. They are used in this library to track data's
+-- parameters' occurences in their fields.
+
 type family ToNProxyK (n :: Nat) (a :: k) :: k where
   ToNProxyK n (a :: Type) = NProxyK n a
   ToNProxyK n (a :: j -> k) = NProxyK n a
 
 class HasNProxyK j where
   data NProxyK (n :: Nat) (a::j) :: k
-instance HasNProxyK Bool where
-  data NProxyK n a = NProxyKB
 instance HasNProxyK Type where
   data NProxyK n a = NProxyK0
 instance HasNProxyK k => HasNProxyK (j -> k) where
   data NProxyK n f = NProxyK1 -- (NProxyK n (f a))
 
 
--- The following turn (T a b c) into the type with Nat Proxies at the
--- paramters, (T 1 2 3)
--- This one will substitute HK0 at index i
--- type MakeNProxyHK0 (s :: Type) i = MakeNProxyHK HK0 s i
--- This one will make the traverseFor type at index i
+-- $lensKindedData
+--
+-- 'LensesOf', 'PrismsOf', and 'TraversalsOf' determine the appropriate
+-- "lens-kinded data" type.
 type TraversalsOf (s :: Type) (t :: Type) (i::Nat)  =
   MakeNProxyHK (TraversalOf s t) s i
 type LensesOf (s :: Type) (t :: Type) (i::Nat)  =
@@ -115,14 +140,26 @@ type PrismsOf (s :: Type) (t :: Type) (i::Nat)  =
 type MakeNProxyHK (f :: k -> Type) (s ::Type) (hki :: Nat)  =
   MakeNProxyHK_ f s hki (CountParams s)
 type family MakeNProxyHK_ (f :: j -> *) (s :: k) (h :: Nat) (i :: Nat) :: k where
+  MakeNProxyHK_ f  s    0 0 = s
+  MakeNProxyHK_ f (s a) 0 i = (MakeNProxyHK_ f s 0 (i - 1)) (f (ToNProxyK i a))
   MakeNProxyHK_ f (s a) 1 1 = s f
   MakeNProxyHK_ f (s a) h 1 = s (ToNProxyK 1 a)
   MakeNProxyHK_ f (s a) h h = (MakeNProxyHK_ f s h (h - 1)) f
   MakeNProxyHK_ f (s a) h i = (MakeNProxyHK_ f s h (i - 1)) (ToNProxyK i a)
 
+type MakeAllParamsNProxyK f = MakeAllParamsNProxyK_ f (CountParams f)
+type family MakeAllParamsNProxyK_ (f :: k) (n :: Nat) :: k where
+  MakeAllParamsNProxyK_ f     0 = f
+  MakeAllParamsNProxyK_ (f a) n = MakeAllParamsNProxyK_ f (n-1) (ToNProxyK n a)
+
+
 -- Turn a parameter proxy into a type
--- E.g. given 'T a g w', turn `3 (2 Int) 1` into `w (g Int) a`
+-- E.g. given 'T a (,))', turn `[2 Int 1]` into `[(Int,a)]`
 type family GetNProxyFrom (s :: j) (pxy :: k) :: k where
+  GetNProxyFrom s (LensOf      s _ (NProxyK n a)) = GetN s n
+  GetNProxyFrom s (PrismOf     s _ (NProxyK n a)) = GetN s n
+  GetNProxyFrom s (TraversalOf s _ (NProxyK n a)) = GetN s n
+
   GetNProxyFrom s (NProxyK n a) = GetN s n
   GetNProxyFrom s (f a) = GetNProxyFrom s f (GetNProxyFrom s a)
   GetNProxyFrom s a = a
@@ -133,6 +170,13 @@ type SubSub (s :: Type) (t :: Type) (n::k) =
   (SubNProxyWith s n (GetNProxyFrom t n) :: Type)
 -- Replace a subset of variables according to a proxy specification.
 type family SubNProxyWith (s :: j) (n :: k) (a :: k) :: j where
+  SubNProxyWith s (LensOf      s _ (NProxyK n _)) a =
+    SubNProxyWith' s (CountParams s - n) a
+  SubNProxyWith s (PrismOf     s _ (NProxyK n _)) a =
+    SubNProxyWith' s (CountParams s - n) a
+  SubNProxyWith s (TraversalOf s _ (NProxyK n _)) a =
+    SubNProxyWith' s (CountParams s - n) a
+
   SubNProxyWith s (NProxyK n _) a = SubNProxyWith' s (CountParams s - n) a
   SubNProxyWith s (u n) (f a) = SubNProxyWith (SubNProxyWith s n a) u f
   SubNProxyWith s n a = s
@@ -153,7 +197,14 @@ type family GetSourceAndTarget (f :: k) :: * where
   GetSourceAndTarget (f (TraversalOf s t)) = (s, t)
   GetSourceAndTarget (f (LensOf s t)) = (s, t)
   GetSourceAndTarget (f (PrismOf s t)) = (s, t)
+  GetSourceAndTarget (f (TraversalOf s t n)) = (s, t)
+  GetSourceAndTarget (f (LensOf s t n) ) = (s, t)
+  GetSourceAndTarget (f (PrismOf s t n)) = (s, t)
   GetSourceAndTarget (f a) = GetSourceAndTarget f
+
+type MakeLowerKinded o s = If (DetectNonHKD o)
+   (MakeAllParamsNProxyK s)
+   (SubstituteLensParam o s)
 
 type SubstituteLensParam o s = SubSub o s (GetNProxyKOfLensParam o ())
 type family GetNProxyKOfLensParam f :: * -> * where
@@ -167,6 +218,12 @@ type family GetNProxyKOfLensParam_ (f :: k) (n :: Nat) :: j where
     ToNProxyK n (PrismOf s t :: * -> *)
   GetNProxyKOfLensParam_ (f a) n = GetNProxyKOfLensParam_ f (n-1)
 
+type family DetectNonHKD o :: Bool where
+  DetectNonHKD (f (LensOf      s t n)) = True
+  DetectNonHKD (f (PrismOf     s t n)) = True
+  DetectNonHKD (f (TraversalOf s t n)) = True
+  DetectNonHKD (f a)                   = False
+  DetectNonHKD a                       = True
 
 -- For Recording Path in a Generic Representation.
 type family Push (pth :: * ) (stp :: * -> *) :: * where

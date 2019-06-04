@@ -10,7 +10,7 @@
 module Test where
 
 import Generics.OneLiner --package one-liner
-import Control.Lens      --package lens
+import Control.Lens      --package lens, used here for operators, e.g. (^.)
 import HKD.Lens
 import GHC.TypeLits
 import GHC.Generics(Generic)
@@ -20,12 +20,13 @@ type Character = Character' Z
 data Character' f a = Character { name :: HK f String
                                 , role :: HK f a }
                     deriving Generic
-deriving instance (Constraints (Character' f a) Show) => Show (Character' f a)
 data Protagonist = Hero | Sidekick deriving Show
 data Antagonist = Villian | Henchman deriving Show
+deriving instance (Constraints (Character' f a) Show)  --provided by one-liner
+  => Show (Character' f a)
 
--- This data is built using a type family which wraps its data in a constructor,
--- except if that constructor is the "zero" constructor, `Z`.
+-- The 'Character' data is built using a type family, 'HK' which wraps its data
+-- in a constructor, except if that constructor is the "zero" constructor, `Z`.
 data Z a
 type family HK (f :: ( * -> * ) ) a where
   HK Z a = a
@@ -104,14 +105,18 @@ poorNumberOneTrappedInARoom = Confrontation [] [goodNumberOne] ARoom
 numberOneReadyForEvilOnceAgain
   :: Scene (Character Antagonist) (Character Antagonist)
 numberOneReadyForEvilOnceAgain = useMindControlGun poorNumberOneTrappedInARoom
--- Confrontation [] [Character {name = "Number One", role = Henchman}] ARoom
+-- Confrontation [] [Character "Number One" Henchman}] ARoom
 
 --Also, prisms.
 type AB = AB' Z
-data AB' f a b = A (HK f a) | B (HK f b) deriving Generic
+data AB' f a b = A {getA::(HK f a)} | B (HK f b) deriving Generic
 deriving instance (Constraints (AB' f a b) Show) => Show (AB' f a b)
 aPrism :: PrismsOf (AB a b) (AB c d) 1
 aPrism = makePrismsOf @"A"
 
--- leftPrism :: PrismOf (Either a b) (Either c d) 0
--- leftPrism = makePrismsOf @"Left"
+its1 = (A 1 :: AB Int ()) ^? getPrismOf (getA aPrism)
+
+--Also, lenses can be made for simple data types, by specifying the
+-- target HKD parameter with 0
+_1 :: Lens (a,b) (c,b) a c
+_1 = getLensOf . fst $ (makeLensesOf :: LensesOf (a,b) (c,d) 0)
